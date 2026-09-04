@@ -5,7 +5,6 @@ import {
   emptyState,
   loadForUser,
   newAttemptId,
-  resetForUser,
   saveForUser,
   type LoadedState,
 } from "@/lib/storage";
@@ -153,10 +152,11 @@ export function StudentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetData = useCallback(() => {
-    if (userId) resetForUser(userId);
+    const fresh = emptyState();
+    if (userId) saveForUser(userId, fresh);
     setHydrated((h) =>
       h
-        ? { ...h, loaded: { state: emptyState(), seeded: false } }
+        ? { ...h, loaded: { state: fresh, seeded: false } }
         : h,
     );
   }, [userId]);
@@ -178,7 +178,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
       userId,
       ready: userId === null || current !== null,
       state,
-      seededDemo: current?.loaded.seeded ?? false,
+      seededDemo: current?.seeded ?? false,
       role,
       attemptsForGoal,
       latestResult,

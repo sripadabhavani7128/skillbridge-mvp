@@ -284,7 +284,7 @@ export default function AssessmentPage() {
 
           <Button
             onClick={next}
-            disabled={!isLast && selected === undefined}
+            disabled={selected === undefined}
             className="rounded-full px-5 shadow-[0_10px_22px_-10px_rgba(79,70,229,0.85)]"
           >
             {submitting ? (

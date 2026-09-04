@@ -34,6 +34,7 @@ export default function ResultsPage() {
     (attemptId ? null : state.attempts[state.attempts.length - 1]) ??
     null;
 
+  const hasAny = state.attempts.length > 0;
   if (!attempt) {
     return (
       <div className="space-y-6">
@@ -41,12 +42,12 @@ export default function ResultsPage() {
           icon={ClipboardList}
           title={attemptId ? "Result not found" : "No results yet"}
           description={
-            attemptId
+            attemptId && hasAny
               ? "That assessment result isn't in your history anymore. Head to your latest results instead."
               : "Complete an assessment to see your skill breakdown, strengths and recommended focus areas."
           }
-          to={attemptId ? "/results" : "/roles"}
-          cta={attemptId ? "See latest results" : "Choose a career goal"}
+          to={attemptId && hasAny ? "/results" : "/roles"}
+          cta={attemptId && hasAny ? "See latest results" : "Choose a career goal"}
         />
       </div>
     );
