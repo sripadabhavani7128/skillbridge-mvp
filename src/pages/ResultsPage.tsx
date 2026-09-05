@@ -1,11 +1,24 @@
 import { ActionBanner } from "@/components/empty-states";
 import { Panel, LevelChip, CompetencyBar, ReadinessRing } from "@/components/skill-ui";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { questionsForRole } from "@/data/questions";
 import { getRole } from "@/data/roles";
 import { getSkill } from "@/data/skills";
-import { LEVEL_META, MVP_DISCLAIMER, ROLE_TARGETS } from "@/lib/config";
+import {
+  LEVEL_META,
+  MVP_DISCLAIMER,
+  QUESTION_TYPE_LABELS,
+  ROLE_TARGETS,
+} from "@/lib/config";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { buildLearningPlan, focusAreasFor, recommendationNotes } from "@/lib/recommendations";
 import { scoreMap, splitStrengths } from "@/lib/scoring";
 import { useStudent } from "@/state/student";
@@ -15,6 +28,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  FileSearch,
   Gauge,
   ListChecks,
   MessageSquareText,
@@ -22,6 +36,7 @@ import {
   Target,
   TrendingUp,
   Trophy,
+  XCircle,
 } from "lucide-react";
 import { Link, useParams } from "react-router";
 
@@ -71,6 +86,19 @@ export default function ResultsPage() {
   const plan = buildLearningPlan(role, attempt);
   const notes = recommendationNotes(role, attempt);
   const levelMeta = LEVEL_META[attempt.overallLevel];
+
+  // Answer review: one row per question actually answered in this attempt.
+  // Seeded demo attempts carry no stored answers, so this stays hidden for them.
+  const reviewRows = questionsForRole(role).map((question, i) => ({
+    question,
+    index: i + 1,
+    picked: attempt.answers[question.id],
+    skillName: getSkill(question.skillId).name,
+  }));
+  const answeredReview = reviewRows.filter((r) => typeof r.picked === "number");
+  const reviewCorrect = reviewRows.filter(
+    (r) => r.picked === r.question.correctIndex,
+  ).length;
 
   const narrative = [
     strengths.length > 0
@@ -303,6 +331,110 @@ export default function ResultsPage() {
           </div>
         )}
       </Panel>
+
+      {/* Answer review */}
+      {answeredReview.length > 0 && (
+        <Panel className="p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <FileSearch className="size-4 text-indigo-600" /> Answer review
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Every question from this attempt — what you picked, the correct
+                answer, and why.
+              </p>
+            </div>
+            <Badge className="gap-1 border-white/70 bg-white/70 text-slate-600">
+              <CheckCircle2 className="size-3.5 text-emerald-500" />
+              {reviewCorrect}/{answeredReview.length} correct
+            </Badge>
+          </div>
+
+          <Accordion type="single" collapsible className="mt-3">
+            {answeredReview.map(({ question, index, picked, skillName }) => {
+              const correct = picked === question.correctIndex;
+              return (
+                <AccordionItem key={question.id} value={question.id} className="border-white/70">
+                  <AccordionTrigger className="gap-3 rounded-xl px-3 py-3 text-left hover:bg-white/50 hover:no-underline">
+                    <span className="flex min-w-0 items-start gap-3">
+                      <span
+                        className={cn(
+                          "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white",
+                          correct ? "bg-emerald-500" : "bg-rose-400",
+                        )}
+                      >
+                        {index}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] font-semibold leading-5 text-slate-800">
+                          {question.prompt}
+                        </span>
+                        <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[10.5px] font-medium text-slate-400">
+                          <span className="rounded bg-white/70 px-1.5 py-px ring-1 ring-inset ring-white/80">
+                            {skillName}
+                          </span>
+                          <span className="rounded bg-white/70 px-1.5 py-px ring-1 ring-inset ring-white/80">
+                            {QUESTION_TYPE_LABELS[question.type]?.short ?? question.type}
+                          </span>
+                          {correct ? (
+                            <span className="text-emerald-600">Correct</span>
+                          ) : (
+                            <span className="text-rose-500">Missed</span>
+                          )}
+                        </span>
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-3 pb-4">
+                    {question.code && (
+                      <pre className="mb-3 overflow-x-auto rounded-xl bg-slate-900 px-4 py-3 text-[12px] leading-6 text-slate-100">
+                        <code>{question.code}</code>
+                      </pre>
+                    )}
+                    <ul className="space-y-1.5">
+                      {question.options.map((option, oi) => {
+                        const isCorrect = oi === question.correctIndex;
+                        const isPicked = oi === picked;
+                        return (
+                          <li
+                            key={oi}
+                            className={cn(
+                              "flex items-start gap-2.5 rounded-xl border px-3 py-2 text-[13px] leading-5",
+                              isCorrect
+                                ? "border-emerald-500/30 bg-emerald-500/[0.07] text-slate-800"
+                                : isPicked
+                                  ? "border-rose-500/30 bg-rose-500/[0.06] text-slate-800"
+                                  : "border-white/70 bg-white/40 text-slate-500",
+                            )}
+                          >
+                            <span className="mt-px font-bold">{String.fromCharCode(65 + oi)}.</span>
+                            <span className="flex-1">{option}</span>
+                            {isCorrect && (
+                              <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                                <CheckCircle2 className="size-3.5" /> correct
+                              </span>
+                            )}
+                            {isPicked && !isCorrect && (
+                              <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-rose-600">
+                                <XCircle className="size-3.5" /> your pick
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <p className="mt-3 flex items-start gap-2 rounded-xl border border-sky-500/15 bg-sky-500/[0.06] px-3 py-2.5 text-xs leading-5 text-slate-600">
+                      <MessageSquareText className="mt-0.5 size-3.5 shrink-0 text-sky-600" />
+                      {question.explanation}
+                    </p>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        </Panel>
+      )}
 
       <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-white/70 bg-white/40 px-5 py-4 backdrop-blur-md sm:flex-row sm:items-center">
         <p className="text-sm leading-6 text-slate-500">
